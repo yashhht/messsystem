@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DY Patil Campus Mess Portal</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { text-align: center; color: #1e293b; margin-bottom: 20px; }
+    
+    /* Navigation Tabs */
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+    .tab-btn { padding: 10px 20px; border: none; background: #e2e8f0; cursor: pointer; border-radius: 6px; font-weight: bold; }
+    .tab-btn.active { background: #2563eb; color: white; }
+
+    /* Cards & Forms */
+    .panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+    button.submit-btn { background: #16a34a; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+    
+    /* Results List */
+    .mess-card { border-left: 5px solid #2563eb; background: #fafafa; padding: 15px; margin-bottom: 12px; border-radius: 6px; }
+    .mess-title { font-size: 18px; font-weight: bold; color: #1e293b; }
+    .mess-location { color: #64748b; font-size: 14px; margin-bottom: 10px; }
+    .menu-badge { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-size: 13px; font-weight: 600; }
+    .alert { padding: 10px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .alert-success { background: #dcfce7; color: #15803d; }
+    .alert-error { background: #fee2e2; color: #b91c1c; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🍱 Campus Mess Portal</h1>
+
+  <!-- Navigation Toggle -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchView('student')">🎓 Student View</button>
+    <button class="tab-btn" onclick="switchView('owner')">👨‍🍳 Mess Owner Portal</button>
+  </div>
+
+  <!-- SECTION 1: STUDENT VIEW -->
+  <div id="student-view" class="panel">
+    <h2>Find Mess Near You</h2>
+    <div class="form-group">
+      <label for="searchLocation">Search by Campus / Location (e.g. "dypatil", "coep"):</label>
+      <input type="text" id="searchLocation" placeholder="Type location and press Search..." />
+    </div>
+    <button class="submit-btn" style="background: #2563eb;" onclick="searchMessByLocation()">Search Nearby Messes</button>
+
+    <h3 style="margin-top: 25px;">Available Today:</h3>
+    <div id="results-container">
+      <p style="color: #64748b;">Search for a location above to view menus...</p>
+    </div>
+  </div>
+
+  <!-- SECTION 2: MESS OWNER VIEW -->
+  <div id="owner-view" class="panel" style="display: none;">
+    <h2>Update Daily Menu</h2>
+    <div id="status-msg" class="alert"></div>
+
+    <div class="form-group">
+      <label for="messIdSelect">Select Mess ID:</label>
+      <select id="messIdSelect">
+        <option value="1">Annapurna Mess (ID: 1)</option>
+        <option value="2">Mess #1 (ID: 2)</option>
+        <option value="3">Mess Lajawab (ID: 3)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="lunchInput">Today's Lunch Menu:</label>
+      <input type="text" id="lunchInput" placeholder="e.g. Paneer Butter Masala, Chapati, Rice" />
+    </div>
+
+    <div class="form-group">
+      <label for="dinnerInput">Today's Dinner Menu:</label>
+      <input type="text" id="dinnerInput" placeholder="e.g. Veg Maratha, Dal Tadka, Chapati" />
+    </div>
+
+    <button class="submit-btn" onclick="updateMessMenu()">Update Live Menu</button>
+  </div>
+</div>
+
+<script >
+  // Toggle between Student and Owner views
+  function switchView(view) {
+    const studentView = document.getElementById('student-view');
+    const ownerView = document.getElementById('owner-view');
+    const buttons = document.querySelectorAll('.tab-btn');
+
+    if (view === 'student') {
+      studentView.style.display = 'block';
+      ownerView.style.display = 'none';
+      buttons[0].classList.add('active');
+      buttons[1].classList.remove('active');
+    } else {
+      studentView.style.display = 'none';
+      ownerView.style.display = 'block';
+      buttons[0].classList.remove('active');
+      buttons[1].classList.add('active');
+    }
+  }
+
+  // 1. GET Request: Fetch Messes by Location Query Parameter
+  async function searchMessByLocation() {
+    const locationInput = document.getElementById('searchLocation').value.trim();
+    const container = document.getElementById('results-container');
+
+    if (!locationInput) {
+      alert("Please enter a location to search!");
+      return;
+    }
+
+    try {
+      // Connects to GET /mess/address?address=...
+      const response = await fetch(`http://localhost:3000/mess/address?address=${encodeURIComponent(locationInput)}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        container.innerHTML = `<p style="color: #b91c1c;">${data.message || data.error}</p>`;
+        return;
+      }
+
+      // Render search results dynamically
+      container.innerHTML = data.map(mess => `
+        <div class="mess-card">
+          <div class="mess-title">${mess.mess_name}</div>
+          <div class="mess-location">📍 ${mess.location}</div>
+          <p><strong>☀️ Lunch:</strong> <span class="menu-badge">${mess.todays_lunch || 'Not updated yet'}</span></p>
+          <p><strong>🌙 Dinner:</strong> <span class="menu-badge" style="background:#fef3c7; color:#b45309;">${mess.todays_dinner || 'Not updated yet'}</span></p>
+        </div>
+      `).join('');
+
+    } catch (err) {
+      container.innerHTML = `<p style="color: #b91c1c;">Error connecting to Express server. Is it running?</p>`;
+    }
+  }
+
+  // 2. PUT Request: Update Lunch & Dinner Menu
+  async function updateMessMenu() {
+    const messId = document.getElementById('messIdSelect').value;
+    const todays_lunch = document.getElementById('lunchInput').value.trim();
+    const todays_dinner = document.getElementById('dinnerInput').value.trim();
+    const statusMsg = document.getElementById('status-msg');
+
+    if (!todays_lunch && !todays_dinner) {
+      alert("Please fill in at least lunch or dinner menu!");
+      return;
+    }
+
+    try {
+      // Connects to PUT /mess/:id/menu
+      const response = await fetch(`http://localhost:3000/mess/${messId}/menu`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ todays_lunch, todays_dinner })
+      });
+
+      const data = await response.json();
+
+      statusMsg.style.display = 'block';
+      if (response.ok) {
+        statusMsg.className = 'alert alert-success';
+        statusMsg.innerText = `Success: ${data.message}`;
+        document.getElementById('lunchInput').value = '';
+        document.getElementById('dinnerInput').value = '';
+      } else {
+        statusMsg.className = 'alert alert-error';
+        statusMsg.innerText = `Error: ${data.error}`;
+      }
+    } catch (err) {
+      statusMsg.style.display = 'block';
+      statusMsg.className = 'alert alert-error';
+      statusMsg.innerText = 'Failed to connect to backend server.';
+    }
+  }
+</script>
+
+</body>
+</html>
